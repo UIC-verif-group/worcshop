@@ -1,4 +1,6 @@
 Require Import VST.floyd.proofauto.
+Require Import String.
+Open Scope string_scope.
 
 Definition spaces (n : nat) : string := String.concat " " (repeat EmptyString (S n)).
 
@@ -67,7 +69,7 @@ Proof.
 Qed.
 ".
 
-Require Import VST.progs64.input.
+Require Import TOP.input.
 
 Goal True.
 Compute (make_script f_main).

@@ -10,17 +10,32 @@ import { readFileSync } from 'fs';
 const fs = require('fs');
 var coq: ChildProcessWithoutNullStreams;
 var reader: readline.Interface;
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 var targetFilePath:string;
 var currDirPath:string;
 
+
+function findWorcshopDir(startPath: string) {
+    let currentPath = startPath;
+    while (currentPath !== path.dirname(currentPath)) { 
+        if (path.basename(currentPath) === 'worcshop') {
+            return currentPath;
+        }
+        currentPath = path.dirname(currentPath); 
+    }
+    throw new Error("Error: 'worcshop' directory was not found.");
+}
+
+
+// this method is called when your extension is activated
+// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
     console.log("activation");
     vscode.workspace.onDidSaveTextDocument((document) => {
-        const progs64DirPath = '/home/harsh/Desktop/BITSLAB/worcshop/src/proofgen.v';
+        const startPath = __dirname;
+        const worcshopDir = findWorcshopDir(startPath);
+        const progs64DirPath = path.join(worcshopDir, 'src', 'proofgen.v');
         const filePath = path.dirname(document.uri.fsPath);
-        const targetFilePath = path.join(filePath, "proofgen.v");
+        targetFilePath = path.join(filePath, "proofgen.v");
 
         fs.copyFile(progs64DirPath, targetFilePath, (err: any) => {
             if (err) {
@@ -43,12 +58,28 @@ export function activate(context: vscode.ExtensionContext) {
 function generateAndSaveVFile(cFilePath: string) {
     let parsedPath = path.parse(cFilePath);
     const newFilePath = path.join(parsedPath.dir, parsedPath.name + '.v');
-    console.log("filepath is");
+    const verifInputPath = path.join(parsedPath.dir, "verif_input.v");
+    console.log("🔍 Expected output file:", targetFilePath);
+    const worcshopDir = findWorcshopDir(__dirname);
+    const vstPath = path.join(worcshopDir, "VST-A-artifact", "VST-patch");
+    console.log("filepath is");   
 
-   
-    const clightgenCommand = `clightgen -normalize ${cFilePath}`;
+    const flags = [
+        `-Q ${worcshopDir} TOP`,
+        `-Q ${path.join(vstPath, "msl")} VST.msl`,
+        `-Q ${path.join(vstPath, "sepcomp")} VST.sepcomp`,
+        `-Q ${path.join(vstPath, "veric")} VST.veric`,
+        `-Q ${path.join(vstPath, "floyd")} VST.floyd`,
+        `-R ${path.join(vstPath, "compcert")} compcert`,
+        `-Q ${path.join(vstPath, "zlist")} VST.zlist`,
+    //     `-Q /home/harsh/Desktop/BITSLAB/worcshop/examples VST.progs64 \
+    //  /home/harsh/Desktop/BITSLAB/worcshop/test/proofgen.v`
+    ].join(" ");
+
+    const clightgenCommand = `clightgen -normalize ${cFilePath} && coqc ${flags} ${newFilePath} && coqc ${flags} ${targetFilePath} > ${verifInputPath}`;
 
     const { exec } = require("child_process");
+
     exec(clightgenCommand, (err: any, stdout: any, stderr: any) => {
         if (err) {
             console.error(`Error while executing clightgen: ${err}`);
