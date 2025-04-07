@@ -90,6 +90,14 @@ function generateAndSaveVFile(cFilePath: string) {
         } else {
             console.log(`${newFilePath} has been successfully generated.`);
         }
+          const vFileUri = vscode.Uri.file(newFilePath);
+          vscode.commands.executeCommand('vscode.open', vFileUri)
+              .then(() => {
+                setTimeout(() => {
+                    vscode.commands.executeCommand('extension.coq.interpretToEnd');
+                    // vscode.commands.executeCommand('vscoq.displayProofView');
+                  }, 1000);
+              });
     });
 }
 
